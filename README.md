@@ -16,7 +16,7 @@ A lightweight calculator service that evaluates basic math expressions.
 
 ## 📦 Setup
 
-```bash
+```
 pip install -r requirements.txt
 uvicorn main:app --reload
 

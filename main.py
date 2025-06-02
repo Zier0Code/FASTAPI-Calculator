@@ -493,7 +493,7 @@ async def internal_server_error_handler(request, exc):
         "status": "error"
     }
 
-# Function to reset history (useful for testing or development)
+# Function to reset history (useful for testing
 def reset_calculation_history():
     """Reset calculation history - useful for testing"""
     global calculation_history

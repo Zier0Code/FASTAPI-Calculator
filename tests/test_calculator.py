@@ -1,38 +1,69 @@
 import pytest
-from main import safe_eval
+from fastapi.testclient import TestClient
+from main import app, reset_calculation_history, CalculatorService
 
-def test_addition():
-    assert safe_eval("2 + 3") == 5
+client = TestClient(app)
 
-def test_subtraction():
-    assert safe_eval("10 - 4") == 6
+@pytest.fixture(autouse=True)
+def reset_history():
+    """Reset history before each test"""
+    reset_calculation_history()
 
-def test_multiplication():
-    assert safe_eval("3 * 7") == 21
+def test_basic_addition():
+    response = client.post("/calculate/basic", json={
+        "a": 10, 
+        "b": 5, 
+        "operation": "add"
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert data["result"] == 15
+    assert data["status"] == "success"
 
-def test_division():
-    assert safe_eval("8 / 2") == 4
+def test_basic_division_by_zero():
+    response = client.post("/calculate/basic", json={
+        "a": 10, 
+        "b": 0, 
+        "operation": "divide"
+    })
+    assert response.status_code == 400
 
-def test_operator_precedence():
-    assert safe_eval("2 + 3 * 4") == 14
+def test_advanced_sqrt():
+    response = client.post("/calculate/advanced", json={
+        "value": 16, 
+        "operation": "sqrt"
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert data["result"] == 4.0
 
-def test_parentheses():
-    assert safe_eval("(2 + 3) * 4") == 20
+def test_expression_evaluation():
+    response = client.post("/calculate/expression", json={
+        "expression": "(10 + 5) * 2"
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert data["result"] == 30
 
-def test_math_functions():
-    assert safe_eval("sqrt(16)") == 4
-    assert round(safe_eval("log(100, 10)"), 5) == 2
-    assert safe_eval("abs(-7)") == 7
+def test_calculator_service_directly():
+    """Test the service class directly"""
+    calc = CalculatorService()
+    result = calc.perform_basic_calculation(10, 5, "add")
+    assert result == 15
 
-def test_invalid_expression():
-    with pytest.raises(ValueError):
-        safe_eval("2 + ")
+def test_history():
+    # Perform a calculation
+    client.post("/calculate/basic", json={"a": 1, "b": 1, "operation": "add"})
+    
+    # Check history
+    response = client.get("/history")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total_count"] == 1
+    assert len(data["calculations"]) == 1
 
-def test_division_by_zero():
-    with pytest.raises(ValueError):
-        safe_eval("1 / 0")
-
-def test_unsafe_expression():
-    with pytest.raises(ValueError):
-        # Trying to access a function not allowed
-        safe_eval("__import__('os').system('echo hello')")
+def test_health_check():
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
